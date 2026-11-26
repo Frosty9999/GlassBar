@@ -1,0 +1,11 @@
+# Build output
+bin/
+obj/
+out/
+*.zip
+
+# Editors
+.vs/
+.vscode/
+*.user
+*.suo

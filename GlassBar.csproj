@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>12</LangVersion>
+    <AssemblyName>GlassBar</AssemblyName>
+    <RootNamespace>GlassBar</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Program.Main, not the generated App.Main: the crash watchdog copy runs without WPF -->
+    <StartupObject>GlassBar.Program</StartupObject>
+    <Version>0.3.0</Version>
+    <!-- WinForms DPI analyzer; GlassBar's windows are WPF, which reads DPI awareness from app.manifest -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+    <!-- Memory: no background GC thread, and a GC that trades a little CPU for a smaller heap -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <ServerGarbageCollector>false</ServerGarbageCollector>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Window list, system tray hosting and app-bar handling (Apache-2.0). Same version RetroBar ships with. -->
+    <PackageReference Include="ManagedShell" Version="0.0.372" />
+  </ItemGroup>
+
+</Project>

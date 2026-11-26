@@ -1,0 +1,43 @@
+# Builds GlassBar on every push and pull request, and publishes a release when a version tag (v1.2.3) is pushed.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write # needed to create releases on version tags
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build
+        run: dotnet publish GlassBar.csproj -c Release -r win-x64 --self-contained false -o out
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $name = if ($env:GITHUB_REF_TYPE -eq "tag") { "GlassBar-$env:GITHUB_REF_NAME-win-x64.zip" } else { "GlassBar-win-x64.zip" }
+          Compress-Archive -Path out/* -DestinationPath $name
+          "ZIP_NAME=$name" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GlassBar-win-x64
+          path: ${{ env.ZIP_NAME }}
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$env:GITHUB_REF_NAME" "$env:ZIP_NAME" --title "GlassBar $env:GITHUB_REF_NAME" --generate-notes

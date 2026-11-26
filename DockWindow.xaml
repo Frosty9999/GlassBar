@@ -1,0 +1,200 @@
+<local:BarWindow x:Class="GlassBar.DockWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:local="clr-namespace:GlassBar"
+                 Title="GlassBar Dock"
+                 SizeToContent="WidthAndHeight">
+
+    <local:BarWindow.Resources>
+        <!-- One dock icon. Used by both the app list and the stacks list. -->
+        <DataTemplate x:Key="DockItemTemplate">
+            <Grid Background="Transparent"
+                  Width="{Binding DockItemWidth, Source={x:Static local:Settings.Instance}}"
+                  Height="{Binding DockItemHeight, Source={x:Static local:Settings.Instance}}"
+                  ToolTip="{Binding Name}"
+                  ToolTipService.Placement="Top"
+                  ToolTipService.VerticalOffset="-8"
+                  ToolTipService.InitialShowDelay="200"
+                  MouseEnter="Item_MouseEnter"
+                  MouseLeave="Item_MouseLeave"
+                  PreviewMouseLeftButtonDown="Item_PreviewMouseLeftButtonDown"
+                  MouseLeftButtonUp="Item_MouseLeftButtonUp"
+                  MouseDown="Item_MouseDown"
+                  ContextMenuOpening="Item_ContextMenuOpening"
+                  AllowDrop="True"
+                  DragEnter="Item_DragEnter"
+                  DragLeave="Item_DragLeave"
+                  DragOver="Item_DragOver"
+                  Drop="Item_Drop">
+                <Grid.ContextMenu>
+                    <!-- Filled in when it opens, see Item_ContextMenuOpening -->
+                    <ContextMenu />
+                </Grid.ContextMenu>
+
+                <!-- Must stay the first child: the hover animation looks it up by position. -->
+                <Image Source="{Binding Icon}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Top"
+                       RenderOptions.BitmapScalingMode="HighQuality"
+                       Width="{Binding DockIconSize, Source={x:Static local:Settings.Instance}}"
+                       Height="{Binding DockIconSize, Source={x:Static local:Settings.Instance}}" />
+
+                <!-- Second child: badge and progress, laid over the icon. Shares the icon's hover zoom. -->
+                <Grid HorizontalAlignment="Center"
+                      VerticalAlignment="Top"
+                      IsHitTestVisible="False"
+                      Width="{Binding DockIconSize, Source={x:Static local:Settings.Instance}}"
+                      Height="{Binding DockIconSize, Source={x:Static local:Settings.Instance}}">
+
+                    <!-- Progress: a thin bar across the bottom of the icon -->
+                    <Border Height="4"
+                            Margin="3,0,3,1"
+                            VerticalAlignment="Bottom"
+                            CornerRadius="2"
+                            Background="#99000000">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding HasProgress}" Value="True" />
+                                            <Condition Binding="{Binding DockShowProgress, Source={x:Static local:Settings.Instance}}" Value="True" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Border CornerRadius="2"
+                                Background="{Binding ProgressBrush}"
+                                Opacity="{Binding ProgressOpacity}"
+                                RenderTransformOrigin="0,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="{Binding ProgressFraction}" />
+                            </Border.RenderTransform>
+                        </Border>
+                    </Border>
+
+                    <!-- Badge: the status icon the app set on its taskbar button -->
+                    <Image Width="16"
+                           Height="16"
+                           Margin="0,-3,-5,0"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Top"
+                           Source="{Binding Badge}"
+                           Visibility="{Binding DockShowBadges, Source={x:Static local:Settings.Instance}, Converter={StaticResource BoolVis}}" />
+                </Grid>
+
+                <!-- Running indicator: a small dot, slightly brighter for the app in front -->
+                <Border Height="4" CornerRadius="2" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Width" Value="4" />
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Setter Property="Background" Value="{Binding TextDimBrush, Source={x:Static local:Settings.Instance}}" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsRunning}" Value="True" />
+                                        <Condition Binding="{Binding DockShowIndicators, Source={x:Static local:Settings.Instance}}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                    <Setter Property="Background" Value="{Binding TextBrush, Source={x:Static local:Settings.Instance}}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+            </Grid>
+        </DataTemplate>
+    </local:BarWindow.Resources>
+
+    <!-- The window is exactly the size of this panel, so the glass never extends past it. -->
+        <Border x:Name="Pill"
+                BorderThickness="1"
+                AllowDrop="True"
+                DragOver="Pill_DragOver"
+                Drop="Pill_Drop"
+                Background="{Binding DockPanelBrush, Source={x:Static local:Settings.Instance}}"
+                BorderBrush="{Binding DockEdgeBrush, Source={x:Static local:Settings.Instance}}">
+            <Border.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Add Downloads stack" Click="AddStack_Click" Tag="Downloads" />
+                    <MenuItem Header="Add Documents stack" Click="AddStack_Click" Tag="Documents" />
+                    <MenuItem Header="Add a folder stack..." Click="AddStack_Click" Tag="Pick" />
+                    <Separator />
+                    <MenuItem Header="GlassBar settings" Click="SettingsMenu_Click" />
+                    <MenuItem Header="Task Manager" Click="TaskManagerMenu_Click" />
+                    <Separator />
+                    <MenuItem Header="Quit GlassBar" Click="ExitMenu_Click" />
+                </ContextMenu>
+            </Border.ContextMenu>
+
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+
+                <!-- Start -->
+                <Button Style="{StaticResource BarButton}"
+                        Click="Start_Click"
+                        ToolTip="Start"
+                        ToolTipService.Placement="Top"
+                        ToolTipService.VerticalOffset="-8"
+                        Padding="0"
+                        Margin="0,0,4,0"
+                        VerticalAlignment="Top"
+                        Width="{Binding DockIconSize, Source={x:Static local:Settings.Instance}}"
+                        Height="{Binding DockIconSize, Source={x:Static local:Settings.Instance}}"
+                        Visibility="{Binding DockShowStartButton, Source={x:Static local:Settings.Instance}, Converter={StaticResource BoolVis}}">
+                    <Viewbox Margin="9">
+                        <UniformGrid Rows="2" Columns="2" Width="20" Height="20">
+                            <Rectangle Margin="1" RadiusX="1.5" RadiusY="1.5" Fill="{Binding AccentBrush, Source={x:Static local:Settings.Instance}}" />
+                            <Rectangle Margin="1" RadiusX="1.5" RadiusY="1.5" Fill="{Binding AccentBrush, Source={x:Static local:Settings.Instance}}" />
+                            <Rectangle Margin="1" RadiusX="1.5" RadiusY="1.5" Fill="{Binding AccentBrush, Source={x:Static local:Settings.Instance}}" />
+                            <Rectangle Margin="1" RadiusX="1.5" RadiusY="1.5" Fill="{Binding AccentBrush, Source={x:Static local:Settings.Instance}}" />
+                        </UniformGrid>
+                    </Viewbox>
+                </Button>
+
+                <!-- Pinned and running apps -->
+                <!-- Drag an icon left or right to reorder it (handled on this list, see DockWindow.xaml.cs) -->
+                <ItemsControl x:Name="ItemsHost"
+                              ItemsSource="{Binding Items}"
+                              ItemTemplate="{StaticResource DockItemTemplate}"
+                              Focusable="False"
+                              PreviewMouseMove="ItemsHost_PreviewMouseMove"
+                              PreviewMouseLeftButtonUp="ItemsHost_PreviewMouseLeftButtonUp"
+                              LostMouseCapture="ItemsHost_LostMouseCapture">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                </ItemsControl>
+
+                <!-- Divider between apps and the stacks/Recycle Bin section (shown only when both have something) -->
+                <Border x:Name="Divider"
+                        Width="1"
+                        Margin="5,3,5,0"
+                        VerticalAlignment="Top"
+                        Height="{Binding DockIconSize, Source={x:Static local:Settings.Instance}}"
+                        Background="{Binding TextDimBrush, Source={x:Static local:Settings.Instance}}"
+                        Opacity="0.35"
+                        Visibility="Collapsed" />
+
+                <!-- Folder stacks, then the Recycle Bin -->
+                <ItemsControl x:Name="StacksHost"
+                              ItemsSource="{Binding Stacks}"
+                              ItemTemplate="{StaticResource DockItemTemplate}"
+                              Focusable="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+</local:BarWindow>
