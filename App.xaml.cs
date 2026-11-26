@@ -44,7 +44,7 @@ namespace GlassBar
             base.OnStartup(e);
 
             // Only one copy may run: two would fight over the taskbar and the system tray.
-            _singleInstance = new Mutex(true, "GlassBar_SingleInstance", out bool isFirst);
+            _singleInstance = new Mutex(true, SingleInstanceName, out bool isFirst);
             if (!isFirst)
             {
                 _singleInstance.Dispose();
@@ -53,6 +53,7 @@ namespace GlassBar
                 return;
             }
 
+            ListenForQuitSignal();
             DispatcherUnhandledException += App_DispatcherUnhandledException;
 
             // GPU rendering loads the Direct3D driver into the process, which costs far more memory than
@@ -80,6 +81,9 @@ namespace GlassBar
                 _dockManager = new DockManager(_shell);
 
                 _shell.ExplorerHelper.HideExplorerTaskbar = Settings.Instance.HideWindowsTaskbar;
+
+                // The installer can add or remove the startup entry, so the checkbox follows the registry.
+                Settings.Instance.RunAtStartup = RunAtStartupEntryExists();
                 Settings.Instance.PropertyChanged += Settings_PropertyChanged;
                 SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
 
@@ -274,6 +278,21 @@ namespace GlassBar
             _settingsWindow.Activate();
         }
 
+        private static bool RunAtStartupEntryExists()
+        {
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(StartupKeyPath, false))
+                {
+                    return key?.GetValue(StartupValueName) != null;
+                }
+            }
+            catch (Exception)
+            {
+                return Settings.Instance.RunAtStartup;
+            }
+        }
+
         private static void ApplyRunAtStartup(bool enable)
         {
             try
@@ -303,6 +322,67 @@ namespace GlassBar
             {
                 MessageBox.Show("Could not change the startup entry:\n" + ex.Message, "GlassBar");
             }
+        }
+
+        // The installer and uninstaller set this event (by name, from Inno Setup's script) so a running GlassBar
+        // exits cleanly and gives the taskbar back before its files are replaced or removed. "GlassBar.exe --quit"
+        // sets it too. Keep the name in sync with installer\GlassBar.iss.
+        private const string QuitEventName = "GlassBar_Quit";
+        private const string SingleInstanceName = "GlassBar_SingleInstance";
+
+        private void ListenForQuitSignal()
+        {
+            EventWaitHandle quit;
+            try
+            {
+                quit = new EventWaitHandle(false, EventResetMode.AutoReset, QuitEventName);
+            }
+            catch (Exception ex)
+            {
+                LogError(ex);
+                return;
+            }
+
+            Thread waiter = new Thread(() =>
+            {
+                quit.WaitOne();
+                Dispatcher.BeginInvoke(new Action(ExitGracefully));
+            })
+            {
+                IsBackground = true,
+                Name = "GlassBar quit signal"
+            };
+            waiter.Start();
+        }
+
+        /// <summary>
+        /// For "GlassBar.exe --quit": asks the running copy to exit and waits up to 15 seconds for it.
+        /// Returns false if none was running or it did not exit in time.
+        /// </summary>
+        public static bool SignalRunningCopyToQuit()
+        {
+            if (!EventWaitHandle.TryOpenExisting(QuitEventName, out EventWaitHandle quit))
+            {
+                return false;
+            }
+
+            using (quit)
+            {
+                quit.Set();
+            }
+
+            for (int i = 0; i < 150; i++)
+            {
+                if (!Mutex.TryOpenExisting(SingleInstanceName, out Mutex running))
+                {
+                    return true;
+                }
+
+                running.Dispose();
+                Thread.Sleep(100);
+            }
+
+            return false;
         }
 
         /// <summary>Closes the bars, gives the Windows taskbar back and exits.</summary>

@@ -5,11 +5,19 @@ the top, the system tray, and a settings window where every look-and-layout opti
 
 ## Download
 
-Get the latest `GlassBar-vX.Y.Z-win-x64.zip` from the
-[Releases page](https://github.com/Frosty9999/GlassBar/releases), unzip it anywhere, and run `GlassBar.exe`.
-It needs Windows 11 (most features also work on Windows 10) and the
-[.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (x64).
-To start it with Windows, tick *Start GlassBar when I sign in* in its settings.
+**Installer (recommended):** download `GlassBar-Setup-vX.Y.Z.exe` from the
+[Releases page](https://github.com/Frosty9999/GlassBar/releases) and run it. It installs for your user only
+(no admin prompt), includes everything GlassBar needs (no separate .NET install), adds a Start menu entry, can start
+GlassBar when you sign in, and starts it when it finishes. To update, run the newer installer; it closes the running
+GlassBar for you. Uninstall it from Settings > Apps; the Windows taskbar comes back. Windows SmartScreen may warn
+about an unrecognised app because the installer isn't code-signed: click *More info*, then *Run anyway*.
+
+**Portable zip:** `GlassBar-vX.Y.Z-win-x64.zip` from the same page. Unzip it anywhere and run `GlassBar.exe`. It
+needs the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (x64). To start it with
+Windows, tick *Start GlassBar when I sign in* in its settings.
+
+Both need Windows 11 (most features also work on Windows 10). `GlassBar.exe --quit` closes a running GlassBar
+cleanly from a script.
 
 ## Build and run
 
@@ -18,6 +26,9 @@ To start it with Windows, tick *Start GlassBar when I sign in* in its settings.
 3. Run `out\GlassBar.exe`. The settings window opens on first launch.
 
 For quick testing while editing code: `dotnet run` from this folder.
+
+To build the installer, also install Inno Setup 6 (`winget install JRSoftware.InnoSetup`) and run
+`build-installer.bat`. It writes `out-setup\GlassBar-Setup-vX.Y.Z.exe`. The script is `installer\GlassBar.iss`.
 
 ## Using it
 

@@ -9,3 +9,7 @@ out/
 .vscode/
 *.user
 *.suo
+
+# Installer build output
+out-installer/
+out-setup/

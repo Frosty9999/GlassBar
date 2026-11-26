@@ -15,6 +15,11 @@ namespace GlassBar
                 return CrashGuard.RunWatchdog(pid);
             }
 
+            if (args.Length == 1 && args[0] == "--quit")
+            {
+                return App.SignalRunningCopyToQuit() ? 0 : 1;
+            }
+
             App app = new App();
             app.InitializeComponent();
             return app.Run();

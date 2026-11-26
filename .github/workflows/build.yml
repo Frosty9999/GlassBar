@@ -30,14 +30,31 @@ jobs:
           Compress-Archive -Path out/* -DestinationPath $name
           "ZIP_NAME=$name" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      # The installer carries its own .NET runtime (self-contained), so users only run one file.
+      - name: Build installer
+        shell: pwsh
+        run: |
+          dotnet publish GlassBar.csproj -c Release -r win-x64 --self-contained true -o out-installer
+          $version = ([xml](Get-Content GlassBar.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress | Out-Null
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          & $iscc /Qp "/DAppVersion=$version" "/DSourceDir=..\out-installer" installer\GlassBar.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "SETUP_PATH=out-setup/GlassBar-Setup-v$version.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - uses: actions/upload-artifact@v4
         with:
           name: GlassBar-win-x64
-          path: ${{ env.ZIP_NAME }}
+          path: |
+            ${{ env.ZIP_NAME }}
+            ${{ env.SETUP_PATH }}
 
       - name: Publish release
         if: github.ref_type == 'tag'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$env:GITHUB_REF_NAME" "$env:ZIP_NAME" --title "GlassBar $env:GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$env:GITHUB_REF_NAME" "$env:SETUP_PATH" "$env:ZIP_NAME" --title "GlassBar $env:GITHUB_REF_NAME" --generate-notes
