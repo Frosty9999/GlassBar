@@ -57,4 +57,12 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$env:GITHUB_REF_NAME" "$env:SETUP_PATH" "$env:ZIP_NAME" --title "GlassBar $env:GITHUB_REF_NAME" --generate-notes
+        # A re-pushed tag updates its existing release's files instead of failing.
+        run: |
+          gh release view "$env:GITHUB_REF_NAME" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload "$env:GITHUB_REF_NAME" "$env:SETUP_PATH" "$env:ZIP_NAME" --clobber
+          } else {
+            gh release create "$env:GITHUB_REF_NAME" "$env:SETUP_PATH" "$env:ZIP_NAME" --title "GlassBar $env:GITHUB_REF_NAME" --generate-notes
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
